@@ -33,6 +33,9 @@ public class ApplicationStatistics {
     private HashMap<String,Float> HotMethods = new HashMap<>();
     private HashMap<String,Float> HotMethodsAllocation = new HashMap<>();
 
+    double TotalCountForHotMethods = 0;
+    double TotalCountForAllocations = 0;
+
     private static final String TEMPLATE =
             """
             ============================ APPLICATION STATS ===============================
@@ -64,7 +67,7 @@ public class ApplicationStatistics {
             """;
 
     private static final String ThreadCPULoadTEMPLATE = """
-            |-------------------------- Hot Methods on $Number---------------------------|
+            |------- Hot Methods on High CPULoad Threads Having StackTrace Available-----|
             | $HOT_METHOD_CPU_THREAD                                            $BX_PE   |
             | $HOT_METHOD_CPU_THREAD                                            $BX_PE   |
             | $HOT_METHOD_CPU_THREAD                                            $BX_PE   |
@@ -173,7 +176,7 @@ public class ApplicationStatistics {
 
     private static void writeParam(StringBuilder template, String variable, String value) { // Where the variable is $NAME
         int lastIndex = 0;
-        while (true) {
+
             int index = template.indexOf(variable, lastIndex);
             if (index == -1) {
                 return;
@@ -187,7 +190,7 @@ public class ApplicationStatistics {
                 char c = i < value.length() ? value.charAt(i) : ' ';
                 template.setCharAt(index + i, c);
             }
-        }
+
     }
 
     private void onCPULoad(RecordedEvent event) {
@@ -288,24 +291,34 @@ public class ApplicationStatistics {
             for(int i = 0;i<5;i++){
                 variable = "$ALLOCATION_TOP_FRAME";
                 value = "N/A";
-
+                if(i<sortedEntriesAllocation.size()) {
+                    Map.Entry<String, Float> entry = sortedEntriesAllocation.get(i);
+                    value = entry.getKey();
+                }
                 writeParam(template,variable,value);
-
                 variable = "$AL_PE";
                 value = "N/A";
-
+                if(i<sortedEntriesAllocation.size()) {
+                    Map.Entry<String, Float> entry = sortedEntriesAllocation.get(i);
+                    value = formatPercentage(entry.getValue()/TotalCountForAllocations);
+                }
                 writeParam(template,variable,value);
-
             }
             // Inserting the HotMethods
             for(int i = 0;i<5;i++){
-                variable = "$ALLOCATION_TOP_FRAME";
+                variable = "$EXECUTION_TOP_FRAME";
                 value = "N/A";
+                if(i<sortedEntriesMethods.size()) {
+                    Map.Entry<String, Float> entry = sortedEntriesMethods.get(i);
+                    value = entry.getKey();
+                }
                 writeParam(template,variable,value);
-
-                variable = "$AL_PE";
+                variable = "$EX_PE";
                 value = "N/A";
-
+                if(i<sortedEntriesMethods.size()) {
+                    Map.Entry<String, Float> entry = sortedEntriesMethods.get(i);
+                    value = formatPercentage(entry.getValue()/TotalCountForHotMethods);
+                }
                 writeParam(template,variable,value);
 
             }
@@ -333,15 +346,10 @@ public class ApplicationStatistics {
             Path file = Path.of("/Users/harsh.kumar/Desktop/Directory1/health-report/src/file123.jfr");
 
             try (RecordingFile recordingFile = new RecordingFile(file)) { // Reads the events from the file. From already recorded file
-
-                int TotalCountForHotMethods = 0;
-                int TotalCountForAllocations = 0;
-
                 while (recordingFile.hasMoreEvents()) {
                     RecordedEvent e = recordingFile.readEvent(); // Reads the next event if exists
                     String EventName = e.getEventType().getName();
                     if(EventName.equals("jdk.ThreadCPULoad")){
-
                         String eventThread = e.getValue("eventThread.osName").toString();
                         float CPULoad = e.getFloat("user")+ e.getFloat("system");
                         if(TopCPULoadUniqueThreads.size()<20){
