@@ -1,4 +1,6 @@
 package ApplicationStatisticsCLI;
+import com.sun.tools.attach.VirtualMachine;
+import com.sun.tools.attach.VirtualMachineDescriptor;
 import jdk.jfr.consumer.*;
 import org.apache.commons.lang3.tuple.Pair;
 import java.nio.file.Path;
@@ -27,18 +29,17 @@ public class ApplicationStatistics {
     private long FirstAllocationTime = -1;
     private double ALLOC_RATE;
 
-    private HashMap<String,Float> TopThreadCPULoad = new HashMap<>();
-    private Comparator<Pair<String, Float>> customComparator = Comparator.comparing(Pair::getValue);
-    private PriorityQueue<Pair<String, Float>> TopCPULoadUniqueThreads = new PriorityQueue<>(customComparator);
-    private HashMap<String,Float> HotMethods = new HashMap<>();
-    private HashMap<String,Float> HotMethodsAllocation = new HashMap<>();
+    private final HashMap<String,Float> TopThreadCPULoad = new HashMap<>();
+    private final Comparator<Pair<String, Float>> customComparator = Comparator.comparing(Pair::getValue);
+    private final PriorityQueue<Pair<String, Float>> TopCPULoadUniqueThreads = new PriorityQueue<>(customComparator);
+    private final HashMap<String,Float> HotMethods = new HashMap<>();
+    private final HashMap<String,Float> HotMethodsAllocation = new HashMap<>();
 
     double TotalCountForHotMethods = 0;
     double TotalCountForAllocations = 0;
 
-    private HashMap<String,Float> ThreadSampleCount = new HashMap<>();
-    private HashMap<String,HashMap<String,Float>> ThreadHotMethod = new HashMap<>();
-
+    private final HashMap<String,Float> ThreadSampleCount = new HashMap<>();
+    private final HashMap<String,HashMap<String,Float>> ThreadHotMethod = new HashMap<>();
 
     private static final String TEMPLATE =
             """
@@ -48,7 +49,7 @@ public class ApplicationStatistics {
             | OC Pause Avg: $OC_AVG   Used Heap   : $USED_HEAP  Thread Count: $THREADS   |
             | OC Pause Max: $OC_MAX   Commit. Heap: $COM_HEAP   Class Count : $CLASSES   |
             | YC Count    : $YC_COUNT CPU Machine : $MACH_CPU   Max Comp. Time: $MAX_COM |
-            | YC Pause Max: $YC_MAX   CPU JVM     :$JVM_CPU                             |
+            | YC Pause Max: $YC_MAX   CPU JVM     :$JVM_CPU                              |
             |------------------------ Top Allocation Methods ----------------------------|
             | $ALLOCATION_TOP_FRAME                                             $AL_PE   |
             | $ALLOCATION_TOP_FRAME                                             $AL_PE   |
@@ -67,6 +68,7 @@ public class ApplicationStatistics {
             | $HIGH_CPU_THREAD                                                  $TX_PE   |
             | $HIGH_CPU_THREAD                                                  $TX_PE   |
             | $HIGH_CPU_THREAD                                                  $TX_PE   |
+            |                                                                            |
             |------ Hot Methods on High CPULoad Threads Having StackTrace Available------|
             """;
 
@@ -95,17 +97,6 @@ public class ApplicationStatistics {
         sb.append(sj.length() > 10 ? "..." : sj);
         sb.append(")");
         return sb.toString();
-    }
-    enum TimespanUnit {
-        NANOSECONDS("ns", 1000), MICROSECONDS("us", 1000), MILLISECONDS("ms", 1000),
-        SECONDS("s", 60), MINUTES("m", 60), HOURS("h", 24), DAYS("d", 7);
-
-        final String text;
-        final long amount;
-        TimespanUnit(String unit, long amount) {
-            this.text = unit;
-            this.amount = amount;
-        }
     }
 
     private static List<String> decodeDescriptors(String descriptor) {
@@ -168,8 +159,8 @@ public class ApplicationStatistics {
             return "N/A";
         }
         double t = value.doubleValue();
-        Prcatice.TimespanUnit result = Prcatice.TimespanUnit.NANOSECONDS;
-        for (Prcatice.TimespanUnit unit : Prcatice.TimespanUnit.values()) {
+        Practice.TimespanUnit result = Practice.TimespanUnit.NANOSECONDS;
+        for (Practice.TimespanUnit unit : Practice.TimespanUnit.values()) {
             result = unit;
             if (t < 1000) {
                 break;
@@ -400,6 +391,28 @@ public class ApplicationStatistics {
             return;
         }
     }
+    private static void printHelp(){
+        System.out.println("---------------------------USAGE--------------------------------");
+        System.out.println("java ApplicationStatistics.java [options] <main-class|pid|file>\n");
+        System.out.println("--------------------------EXAMPLES------------------------------");
+        System.out.println("java HealthReport.java MyApplication");
+        System.out.println("java HealthReport.java 4711");
+        System.out.println("java HealthReport.java PATH/recording.jfr\n");
+        List<VirtualMachineDescriptor> vmDescriptors = VirtualMachine.list();
+        System.out.println("--------------------Running Java Processes-----------------------");
+        System.out.println("PID\t    DisplayName");
+        System.out.println("---     -----------");
+        boolean Count = false;
+        for (VirtualMachineDescriptor vmDescriptor : vmDescriptors) {
+            String pid = vmDescriptor.id();
+            String displayName = vmDescriptor.displayName();
+            System.out.println(pid + "\t" + displayName);
+            Count = true;
+        }
+        if(!Count){
+            System.out.println("Found no running Java processes");
+        }
+    }
 
 /*
 
@@ -408,11 +421,7 @@ public class ApplicationStatistics {
     then event objects of the same type are reused to reduced allocation pressure, but it is only available including and after jdk-14.
 
 */
-
-    public void Runner() throws Exception{
-//            Path file = Path.of("/Users/harsh.kumar/Desktop/Directory1/health-report/src/file123.jfr");
-            Path file = Path.of("/Users/harsh.kumar/Downloads/flight_recording-2.jfr");
-
+    public void Runner(Path file) throws Exception{
             try (RecordingFile recordingFile = new RecordingFile(file)) { // Reads the events from the file. From already recorded file
                 while (recordingFile.hasMoreEvents()) {
                     RecordedEvent e = recordingFile.readEvent(); // Reads the next event if exists
@@ -545,15 +554,14 @@ public class ApplicationStatistics {
                         onGCHeapConfiguration(e);
                     }
                 }
-                // Inserting the values into the Template
+                // Printing the Analysis Report
                 printReport();
 
             }
         }
         public static void main(String[] args) throws Exception {
-
-            ApplicationStatistics Timepass = new ApplicationStatistics();
-            Timepass.Runner();
+            ApplicationStatistics TimePass = new ApplicationStatistics();
+            TimePass.Runner(Path.of("/Users/harsh.kumar/Downloads/flight_recording-2.jfr"));
         }
     }
 

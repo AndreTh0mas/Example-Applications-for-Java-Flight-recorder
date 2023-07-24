@@ -3,7 +3,15 @@ package ApplicationStatisticsCLI;
 Step-1: implement the priority queue and get unique threads with available stack traces which have the highest Thread CPU Load. upto 5 only.
 */
 
-public class Prcatice {
+import com.sun.tools.attach.VirtualMachine;
+import com.sun.tools.attach.VirtualMachineDescriptor;
+
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Optional;
+import java.util.Queue;
+
+public class Practice {
 
     String Wow;
     String harsh;
@@ -124,61 +132,86 @@ public class Prcatice {
         return bytes + " bytes";
     }
 
+    private static void printHelp(){
+        System.out.println("---------------------------USAGE--------------------------------");
+        System.out.println("java ApplicationStatistics.java [options] <main-class|pid|file>\n");
+        System.out.println("--------------------------EXAMPLES------------------------------");
+        System.out.println("java HealthReport.java MyApplication");
+        System.out.println("java HealthReport.java 4711");
+        System.out.println("java HealthReport.java PATH/recording.jfr\n");
+        List<VirtualMachineDescriptor> vmDescriptors = VirtualMachine.list();
+        System.out.println("--------------------Running Java Processes-----------------------");
+        System.out.println("PID\t    DisplayName");
+        System.out.println("---     -----------");
+        boolean Count = false;
+        for (VirtualMachineDescriptor vmDescriptor : vmDescriptors) {
+            String pid = vmDescriptor.id();
+            String displayName = vmDescriptor.displayName();
+            System.out.println(pid + "\t" + displayName);
+            Count = true;
+        }
+        if(!Count){
+            System.out.println("Found no running Java processes");
+        }
+    }
 
-    public static void main(String[] args) throws Exception{
-        System.out.println(formatBytes(2.2820747294591194E8));
-        System.out.println(formatPercentage(0.345));
-        System.out.println(formatDuration(1.697604E7));
-//        Path file = Path.of("/Users/harsh.kumar/Desktop/Directory1/health-report/src/file123.jfr");
-//        try (var recordingFile = new RecordingFile(file)) { // Reads the recording from the file. From already recorded file
-//            while (recordingFile.hasMoreEvents()) {
-//                var e = recordingFile.readEvent(); // Reads the next event if exists
-//                String eventName = e.getEventType().getName();
-//                if(eventName.equals("jdk.ExecutionSample")){
-////                    System.out.println(e);
-//                    List<RecordedFrame> frames = e.getStackTrace().getFrames(); // getting all the frames from the Execution event.
-//                    if (!frames.isEmpty()) {
-//                        RecordedFrame topFrame = frames.get(0);
-//                        if (topFrame.isJavaFrame()) {
-//                            System.out.println(formatMethod(topFrame.getMethod()));
-//                        }
-//                    }
-//
-//                }
-//
-//            }
-////            System.out.println("List of registered event types");
-////                System.out.println("==============================");
-////                for (EventType eventType : recordingFile.readEventTypes()) { // Returns the list of all event types.
-////                    System.out.println(eventType.getName());
-////                }
-////
-//        }
-        Prcatice Harhs = new Prcatice();
-//        Harhs.printReport();
+    private static int parseInteger(String value) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException nfe) {
+            System.out.println("Not a valid PID value: " + value);
+            System.exit(0);
+        }
+        return 0;
+    }
+    public static void main(String[] args){
+        if(args.length == 0 || args[0].equals("-help")){
+            printHelp();
+            System.exit(0);
+        }
+        // Checking if the argument is a file
+        if(args[0].length()>4){
+            String lastFourCharacters = args[0].substring(args[0].length() - 4);
+            if(lastFourCharacters.equals(".jfr")){
+                try{
+                    Path file = Path.of(args[0]);
+                    // Run the runner
 
 
+                    System.exit(0);
 
-//
+                } catch (Exception ex){
+                    System.out.println("Invalid path of the jfr file or the file does not exists");
+                    System.exit(0);
+                }
+            }
+        }
+        // Not a JFR file
+        // Have to check for Main class or The pid of the process and then going start a new JFR recording.
+        if(Character.isDigit(args[0].charAt(0))){
+            // Must be the PID of a Java process.
+            long PID = parseInteger(args[0]);
+            Optional<ProcessHandle> processHandle = ProcessHandle.of(PID);
+            // Check if the process is present (running)
+            if (processHandle.isPresent()) {
+                System.out.println("Java Process with PID: " + PID + " found.");
+                // Do the logic of Starting a New JFR Recording and printing report on that.
+                System.out.println("Starting a new JFR recording");
+                System.out.println("Specify the Duration of Recording: ,Press enter for default = 100s");
+
+                System.out.println("Specify the Path of Recording: ,Press enter for default = This directory");
+
+
+            } else {
+                System.out.println("Java Process with PID: " + PID + " not found.");
+                System.exit(0);
+            }
+        }
+        else{
+            // Looking for the main class.
+
+        }
+
 
     }
 }
-
-//                ArrayList<Pair<String,Float>> DataOnThreads = new ArrayList<>();
-//                while(TopCPULoadUniqueThreads.size()>0){
-//                    Pair<String,Float> Top = TopCPULoadUniqueThreads.poll();
-//                    DataOnThreads.add(Top);
-//                }
-//                PriorityQueue<Pair<String, Float>> HotMethods5 = new PriorityQueue<>(customComparator);
-//                for (Map.Entry<String, Float> entry : HotMethods.entrySet()) {
-//                    float CountPercentage =(float) entry.getValue()/TotalCountForHotMethods;
-//                    HotMethods.put(entry.getKey(),CountPercentage);
-//                    HotMethods5.add(Pair.of(entry.getKey(), CountPercentage*100));
-//                    if(HotMethods5.size()>5){
-//                        HotMethods5.poll();
-//                    }
-//                }
-//                while(HotMethods5.size()>0){
-//                    var Temp = HotMethods5.poll();
-//                    System.out.println(Temp.getLeft() + ":  "+ Temp.getRight()+"% ");
-//                }
