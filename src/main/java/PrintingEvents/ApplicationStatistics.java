@@ -36,6 +36,10 @@ public class ApplicationStatistics {
     double TotalCountForHotMethods = 0;
     double TotalCountForAllocations = 0;
 
+    private HashMap<String,Float> ThreadSampleCount = new HashMap<>();
+    private HashMap<String,HashMap<String,Float>> ThreadHotMethod = new HashMap<>();
+
+
     private static final String TEMPLATE =
             """
             ============================ APPLICATION STATS ===============================
@@ -63,11 +67,12 @@ public class ApplicationStatistics {
             | $HIGH_CPU_THREAD                                                  $TX_PE   |
             | $HIGH_CPU_THREAD                                                  $TX_PE   |
             | $HIGH_CPU_THREAD                                                  $TX_PE   |
-            ==============================================================================
+            |------ Hot Methods on High CPULoad Threads Having StackTrace Available------|
             """;
 
     private static final String ThreadCPULoadTEMPLATE = """
-            |------- Hot Methods on High CPULoad Threads Having StackTrace Available-----|
+            | $THREAD_NAME                                                      $HX_PE   |
+            |        --------------------------------------------------------            |
             | $HOT_METHOD_CPU_THREAD                                            $BX_PE   |
             | $HOT_METHOD_CPU_THREAD                                            $BX_PE   |
             | $HOT_METHOD_CPU_THREAD                                            $BX_PE   |
@@ -78,6 +83,7 @@ public class ApplicationStatistics {
     private static String formatMethod(RecordedMethod m) {
         StringBuilder sb = new StringBuilder();
         String typeName = m.getType().getName(); // Returns full type Name
+//        typeName = typeName.substring(typeName.lastIndexOf('.') + 1);
         sb.append(typeName).append(".").append(m.getName());
         sb.append("(");
         StringJoiner sj = new StringJoiner(", ");
@@ -86,7 +92,7 @@ public class ApplicationStatistics {
         for (String qualifiedName : decodeDescriptors(parameter)) {
             sj.add(qualifiedName.substring(qualifiedName.lastIndexOf('.') + 1));
         }
-        sb.append(sj.length() > 30 ? "..." : sj);
+        sb.append(sj.length() > 10 ? "..." : sj);
         sb.append(")");
         return sb.toString();
     }
@@ -184,6 +190,10 @@ public class ApplicationStatistics {
             lastIndex = index + 1;
             if (value == null || value.length() == 0 ) {
                 value = "N/A";
+            }
+            if(value.length()>50){
+                value = value.substring(0,50);
+                value.concat("..");
             }
             int length = Math.max(value.length(), variable.length());
             for (int i = 0; i < length; i++) {
@@ -288,6 +298,10 @@ public class ApplicationStatistics {
                     .stream()
                     .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
                     .toList();
+            List<Map.Entry<String, Float>> sortedEntriesThreadCPULoad = TopThreadCPULoad.entrySet()
+                    .stream()
+                    .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
+                    .toList();
             for(int i = 0;i<5;i++){
                 variable = "$ALLOCATION_TOP_FRAME";
                 value = "N/A";
@@ -320,14 +334,67 @@ public class ApplicationStatistics {
                     value = formatPercentage(entry.getValue()/TotalCountForHotMethods);
                 }
                 writeParam(template,variable,value);
-
             }
             // Inserting the Top Threads
-
-            // Inserting HotMethods of the High CPU Threads
+            for(int i = 0;i<5;i++){
+                variable = "$HIGH_CPU_THREAD";
+                value = "N/A";
+                if(i<sortedEntriesThreadCPULoad.size()) {
+                    Map.Entry<String, Float> entry = sortedEntriesThreadCPULoad.get(i);
+                    value = entry.getKey();
+                }
+                writeParam(template,variable,value);
+                variable = "$TX_PE";
+                value = "N/A";
+                if(i<sortedEntriesThreadCPULoad.size()) {
+                    Map.Entry<String, Float> entry = sortedEntriesThreadCPULoad.get(i);
+                    value = formatPercentage(entry.getValue());
+                }
+                writeParam(template,variable,value);
+            }
 
 
             System.out.println(template.toString());
+
+
+            // Inserting HotMethods of the High CPU Threads
+            int PrintCount = 0;
+            for(Map.Entry<String,Float> entry: sortedEntriesThreadCPULoad){
+                if(ThreadSampleCount.containsKey(entry.getKey())){ //  entry.getKey -> gets the ThreadName
+                    StringBuilder ThreadTemplate = new StringBuilder(ThreadCPULoadTEMPLATE);
+                    variable = "$THREAD_NAME";
+                    value = entry.getKey();
+                    writeParam(ThreadTemplate,variable,value);
+                    variable = "$HX_PE";
+                    value = formatPercentage(entry.getValue());
+                    writeParam(ThreadTemplate,variable,value);
+                    List<Map.Entry<String, Float>> ThreadHotMethodEntry = ThreadHotMethod.get(entry.getKey()).entrySet()
+                            .stream()
+                            .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
+                            .toList();
+                    for(int i = 0;i<5;i++){
+                        variable = "$HOT_METHOD_CPU_THREAD";
+                        value = "N/A";
+                        if(i<ThreadHotMethodEntry.size()) {
+                            Map.Entry<String, Float> Entry = ThreadHotMethodEntry.get(i);
+                            value = Entry.getKey();
+                        }
+                        writeParam(ThreadTemplate,variable,value);
+                        variable = "$BX_PE";
+                        value = "N/A";
+                        if(i<ThreadHotMethodEntry.size()) {
+                            Map.Entry<String, Float> Entry = ThreadHotMethodEntry.get(i);
+                            value = formatPercentage(Entry.getValue()/ThreadSampleCount.get(entry.getKey()));
+                        }
+                        writeParam(ThreadTemplate,variable,value);
+                    }
+                    PrintCount++;
+                    System.out.println(ThreadTemplate.toString());
+                    if(PrintCount == 5){
+                        break;
+                    }
+                }
+            }
         }
         catch(Exception ex){
             return;
@@ -343,7 +410,8 @@ public class ApplicationStatistics {
 */
 
     public void Runner() throws Exception{
-            Path file = Path.of("/Users/harsh.kumar/Desktop/Directory1/health-report/src/file123.jfr");
+//            Path file = Path.of("/Users/harsh.kumar/Desktop/Directory1/health-report/src/file123.jfr");
+            Path file = Path.of("/Users/harsh.kumar/Downloads/flight_recording-2.jfr");
 
             try (RecordingFile recordingFile = new RecordingFile(file)) { // Reads the events from the file. From already recorded file
                 while (recordingFile.hasMoreEvents()) {
@@ -385,6 +453,13 @@ public class ApplicationStatistics {
                             if (!frames.isEmpty()) {
                                 RecordedFrame topFrame = frames.get(0);
                                 if (topFrame.isJavaFrame()) {
+                                    String ThreadName = e.getValue("sampledThread.javaName").toString();
+                                    if(ThreadSampleCount.containsKey(ThreadName)){
+                                        ThreadSampleCount.put(ThreadName,ThreadSampleCount.get(ThreadName)+1);
+                                    }
+                                    else{
+                                        ThreadSampleCount.put(ThreadName,(float)1);
+                                    }
                                     TotalCountForHotMethods++;
                                     String topMethod = formatMethod(topFrame.getMethod());
                                     if (HotMethods.containsKey(topMethod)) {
@@ -392,6 +467,19 @@ public class ApplicationStatistics {
                                     } else {
                                         HotMethods.put(topMethod, (float) 1);
                                     }
+                                    if(ThreadHotMethod.containsKey(ThreadName)){
+                                        if(ThreadHotMethod.get(ThreadName).containsKey(topMethod)){
+                                            ThreadHotMethod.get(ThreadName).put(topMethod,ThreadHotMethod.get(ThreadName).get(topMethod)+1);
+                                        }
+                                        else{
+                                            ThreadHotMethod.get(ThreadName).put(topMethod,(float)1);
+                                        }
+                                    }
+                                    else{
+                                        ThreadHotMethod.put(ThreadName,new HashMap<>());
+                                        ThreadHotMethod.get(ThreadName).put(topMethod,(float)1);
+                                    }
+
                                 }
                             }
                         } catch(Exception exception){
@@ -457,7 +545,6 @@ public class ApplicationStatistics {
                         onGCHeapConfiguration(e);
                     }
                 }
-
                 // Inserting the values into the Template
                 printReport();
 
