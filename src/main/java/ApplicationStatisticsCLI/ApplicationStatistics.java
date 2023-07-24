@@ -1,11 +1,9 @@
 package ApplicationStatisticsCLI;
-import com.sun.tools.attach.VirtualMachine;
-import com.sun.tools.attach.VirtualMachineDescriptor;
 import jdk.jfr.consumer.*;
 import org.apache.commons.lang3.tuple.Pair;
 import java.nio.file.Path;
-import java.text.DecimalFormat;
 import java.util.*;
+import static ApplicationStatisticsCLI.Formatters.*;
 import static java.lang.Math.max;
 
 
@@ -40,6 +38,7 @@ public class ApplicationStatistics {
 
     private final HashMap<String,Float> ThreadSampleCount = new HashMap<>();
     private final HashMap<String,HashMap<String,Float>> ThreadHotMethod = new HashMap<>();
+    private static final HashMap<String,Float> Top5HotMethods = new HashMap<>();
 
     private static final String TEMPLATE =
             """
@@ -82,117 +81,6 @@ public class ApplicationStatistics {
             | $HOT_METHOD_CPU_THREAD                                            $BX_PE   |
             ==============================================================================
             """;
-    private static String formatMethod(RecordedMethod m) {
-        StringBuilder sb = new StringBuilder();
-        String typeName = m.getType().getName(); // Returns full type Name
-//        typeName = typeName.substring(typeName.lastIndexOf('.') + 1);
-        sb.append(typeName).append(".").append(m.getName());
-        sb.append("(");
-        StringJoiner sj = new StringJoiner(", ");
-        String md = m.getDescriptor().replace("/", ".");
-        String parameter = md.substring(1, md.lastIndexOf(")"));
-        for (String qualifiedName : decodeDescriptors(parameter)) {
-            sj.add(qualifiedName.substring(qualifiedName.lastIndexOf('.') + 1));
-        }
-        sb.append(sj.length() > 10 ? "..." : sj);
-        sb.append(")");
-        return sb.toString();
-    }
-
-    private static List<String> decodeDescriptors(String descriptor) {
-        List<String> descriptors = new ArrayList<>();
-        for (int index = 0; index < descriptor.length(); index++) {
-            String arrayBrackets = "";
-            while (descriptor.charAt(index) == '[') {
-                arrayBrackets += "[]";
-                index++;
-            }
-            String type = switch (descriptor.charAt(index)) {
-                case 'L' -> {
-                    int endIndex = descriptor.indexOf(';', index);
-                    String s = descriptor.substring(index + 1, endIndex);
-                    index = endIndex;
-                    yield s;
-                }
-                case 'I' -> "int";
-                case 'J' -> "long";
-                case 'Z' -> "boolean";
-                case 'D' -> "double";
-                case 'F' -> "float";
-                case 'S' -> "short";
-                case 'C' -> "char";
-                case 'B' -> "byte";
-                default -> "<unknown-descriptor-type>";
-            };
-            descriptors.add(type + arrayBrackets);
-        }
-        return descriptors;
-    }
-
-    private static String formatBytes(Number value) {
-        DecimalFormat decimalFormat = new DecimalFormat("#.##");
-        if (value == null || value.longValue()<=0) {
-            return "N/A";
-        }
-        double bytes = value.doubleValue();
-        if (bytes >= 1024 * 1024 * 1024) {
-            return decimalFormat.format(bytes / (1024 * 1024 * 1024)) + " GB";
-        }
-        if (bytes >= 1024 * 1024) {
-            return decimalFormat.format(bytes / (1024 * 1024 )) + " MB";
-        }
-        if (bytes >= 1024) {
-            return decimalFormat.format(bytes / 1024) + " kB";
-        }
-        return decimalFormat.format(bytes) + " bytes";
-    }
-
-    private static String formatPercentage(Number value) {
-        if (value == null || value.longValue() == -1) {
-            return "N/A";
-        }
-        return String.format("%6.2f %%", value.doubleValue() * 100);
-    }
-
-    private static String formatDuration(Number value) {
-        if (value == null || value.longValue()<=0) {
-            return "N/A";
-        }
-        double t = value.doubleValue();
-        Practice.TimespanUnit result = Practice.TimespanUnit.NANOSECONDS;
-        for (Practice.TimespanUnit unit : Practice.TimespanUnit.values()) {
-            result = unit;
-            if (t < 1000) {
-                break;
-            }
-            t = t / unit.amount;
-        }
-        return String.format("%.1f %s", t, result.text);
-    }
-
-
-    private static void writeParam(StringBuilder template, String variable, String value) { // Where the variable is $NAME
-        int lastIndex = 0;
-
-            int index = template.indexOf(variable, lastIndex);
-            if (index == -1) {
-                return;
-            }
-            lastIndex = index + 1;
-            if (value == null || value.length() == 0 ) {
-                value = "N/A";
-            }
-            if(value.length()>50){
-                value = value.substring(0,50);
-                value.concat("..");
-            }
-            int length = Math.max(value.length(), variable.length());
-            for (int i = 0; i < length; i++) {
-                char c = i < value.length() ? value.charAt(i) : ' ';
-                template.setCharAt(index + i, c);
-            }
-
-    }
 
     private void onCPULoad(RecordedEvent event) {
         MACH_CPU = max(MACH_CPU,(float)event.getValue("machineTotal"));
@@ -316,6 +204,7 @@ public class ApplicationStatistics {
                 if(i<sortedEntriesMethods.size()) {
                     Map.Entry<String, Float> entry = sortedEntriesMethods.get(i);
                     value = entry.getKey();
+                    Top5HotMethods.put(entry.getKey(),entry.getValue());
                 }
                 writeParam(template,variable,value);
                 variable = "$EX_PE";
@@ -346,7 +235,6 @@ public class ApplicationStatistics {
 
 
             System.out.println(template.toString());
-
 
             // Inserting HotMethods of the High CPU Threads
             int PrintCount = 0;
@@ -386,31 +274,10 @@ public class ApplicationStatistics {
                     }
                 }
             }
+
         }
         catch(Exception ex){
-            return;
-        }
-    }
-    private static void printHelp(){
-        System.out.println("---------------------------USAGE--------------------------------");
-        System.out.println("java ApplicationStatistics.java [options] <main-class|pid|file>\n");
-        System.out.println("--------------------------EXAMPLES------------------------------");
-        System.out.println("java HealthReport.java MyApplication");
-        System.out.println("java HealthReport.java 4711");
-        System.out.println("java HealthReport.java PATH/recording.jfr\n");
-        List<VirtualMachineDescriptor> vmDescriptors = VirtualMachine.list();
-        System.out.println("--------------------Running Java Processes-----------------------");
-        System.out.println("PID\t    DisplayName");
-        System.out.println("---     -----------");
-        boolean Count = false;
-        for (VirtualMachineDescriptor vmDescriptor : vmDescriptors) {
-            String pid = vmDescriptor.id();
-            String displayName = vmDescriptor.displayName();
-            System.out.println(pid + "\t" + displayName);
-            Count = true;
-        }
-        if(!Count){
-            System.out.println("Found no running Java processes");
+            ex.printStackTrace();
         }
     }
 
@@ -471,18 +338,9 @@ public class ApplicationStatistics {
                                     }
                                     TotalCountForHotMethods++;
                                     String topMethod = formatMethod(topFrame.getMethod());
-                                    if (HotMethods.containsKey(topMethod)) {
-                                        HotMethods.put(topMethod, HotMethods.get(topMethod) + 1);
-                                    } else {
-                                        HotMethods.put(topMethod, (float) 1);
-                                    }
+                                    HotMethods.merge(topMethod, (float) 1,Float::sum);
                                     if(ThreadHotMethod.containsKey(ThreadName)){
-                                        if(ThreadHotMethod.get(ThreadName).containsKey(topMethod)){
-                                            ThreadHotMethod.get(ThreadName).put(topMethod,ThreadHotMethod.get(ThreadName).get(topMethod)+1);
-                                        }
-                                        else{
-                                            ThreadHotMethod.get(ThreadName).put(topMethod,(float)1);
-                                        }
+                                        ThreadHotMethod.get(ThreadName).merge(topMethod,(float)1,Float::sum);
                                     }
                                     else{
                                         ThreadHotMethod.put(ThreadName,new HashMap<>());
@@ -492,7 +350,7 @@ public class ApplicationStatistics {
                                 }
                             }
                         } catch(Exception exception){
-
+                            exception.printStackTrace();
                         }
 
                     }
@@ -523,7 +381,7 @@ public class ApplicationStatistics {
                                 FirstAllocationTime = timestamp;
                             }
                         }catch(Exception exception){
-
+                            exception.printStackTrace();
                         }
                     }
                     if(EventName.equals("jdk.CPULoad")){
@@ -554,14 +412,16 @@ public class ApplicationStatistics {
                         onGCHeapConfiguration(e);
                     }
                 }
-                // Printing the Analysis Report
                 printReport();
-
             }
         }
         public static void main(String[] args) throws Exception {
             ApplicationStatistics TimePass = new ApplicationStatistics();
-            TimePass.Runner(Path.of("/Users/harsh.kumar/Downloads/flight_recording-2.jfr"));
+            Path file = Path.of("/Users/harsh.kumar/Downloads/flight_recording-2.jfr");
+            TimePass.Runner(file);
+            System.out.println("|================ Sprinklr Methods Contribution to Hot Methods ==============|\n");
+            SprinklrMethodStats SprinklrPrint = new SprinklrMethodStats(Top5HotMethods);
+            SprinklrPrint.Main(file);
         }
     }
 
