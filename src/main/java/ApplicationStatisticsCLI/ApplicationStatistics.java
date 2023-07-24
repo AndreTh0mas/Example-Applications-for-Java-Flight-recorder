@@ -1,4 +1,4 @@
-package PrintingEvents;
+package ApplicationStatisticsCLI;
 import jdk.jfr.consumer.*;
 import org.apache.commons.lang3.tuple.Pair;
 import java.nio.file.Path;
@@ -551,6 +551,7 @@ public class ApplicationStatistics {
             }
         }
         public static void main(String[] args) throws Exception {
+
             ApplicationStatistics Timepass = new ApplicationStatistics();
             Timepass.Runner();
         }
