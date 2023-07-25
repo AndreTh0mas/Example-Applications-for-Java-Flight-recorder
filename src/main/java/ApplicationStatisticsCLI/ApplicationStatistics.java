@@ -274,7 +274,6 @@ public class ApplicationStatistics {
                     }
                 }
             }
-
         }
         catch(Exception ex){
             ex.printStackTrace();
@@ -284,8 +283,9 @@ public class ApplicationStatistics {
 /*
 
     To process only specific events, we could read events one by one with RecordingFile.readEvent(),
-    as above, then check the event's name. However, if we use the event streaming API,
-    then event objects of the same type are reused to reduced allocation pressure, but it is only available including and after jdk-14.
+    then check the event's name. However, if we use the event streaming API, then event objects of the same type
+    are reused to reduced allocation pressure, but it is only available including and after jdk-14, Also using the
+    Event Streaming API we would also be able to live monitoring of the Respective stats.
 
 */
     public void Runner(Path file) throws Exception{

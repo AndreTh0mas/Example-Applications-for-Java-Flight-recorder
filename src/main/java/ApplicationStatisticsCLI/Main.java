@@ -6,12 +6,13 @@ import com.sun.tools.attach.VirtualMachineDescriptor;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.Scanner;
 
 public class Main {
@@ -154,37 +155,43 @@ public class Main {
                 }
             } else {
                 System.out.println("Java Process with PID: " + PID + " not found.");
-                System.exit(0);
             }
         }
         else{
             // Looking for the Main class.
-            Optional<VirtualMachineDescriptor> vmd =
-                    VirtualMachine.list().stream()
-                            .filter(v -> v.displayName()
-                                    .contains(args[0]))
-                            .findFirst();
-            if (vmd.isEmpty()) {
-                throw new RuntimeException("Cannot find VM for SleepOneSecondInterval");
-            }
-            VirtualMachine vm = VirtualMachine.attach(vmd.get());
-            // Get system properties from attached VM
-            Properties props = vm.getSystemProperties();
-            long PID = parseInteger(props.getProperty("processId"));
-            try{
-                Path JfrFilepath = RecordingStartUsingPID(PID);
-                if(Files.exists(JfrFilepath)){
-                    ApplicationReport.Runner(JfrFilepath);
+            RuntimeMXBean runtimeMxBean = ManagementFactory.getRuntimeMXBean();
+            // Get the process ID of the current Java process
+            long currentPid = ProcessHandle.current().pid();
+            // Iterating through the list of running Java processes
+            for (String processInfo : runtimeMxBean.getInputArguments()) {
+                if (processInfo.contains(args[0])) {
+                    // Extract the PID from the processInfo (it is usually the first part before the '@' symbol)
+                    int atIndex = processInfo.indexOf('@');
+                    if (atIndex > 0) {
+                        long pid = Long.parseLong(processInfo.substring(0, atIndex));
+                        // Check if the found PID is different from the current PID to avoid self-matching
+                        if (pid != currentPid) {
+                            System.out.println("Found Java process with Main class '" + args[0] + "'. PID: " + pid);
+                            try{
+                                Path JfrFilepath = RecordingStartUsingPID(pid);
+                                if(Files.exists(JfrFilepath)){
+                                    ApplicationReport.Runner(JfrFilepath);
+                                }
+                                else{
+                                    System.out.println("Jfr recording was unsuccessful please try again with proper arguments");
+                                }
+                                return;
+                            }
+                            catch (Exception ex){
+                                System.out.println("Something went wrong, Please try again");
+                                ex.printStackTrace();
+                            }
+                            break;
+                        }
+                    }
                 }
-                else{
-                    System.out.println("Jfr recording was unsuccessful please try again with proper arguments");
-                }
             }
-            catch (Exception ex){
-                System.out.println("Something went wrong, Please try again");
-                ex.printStackTrace();
-                System.exit(0);
-            }
+            System.out.println("Main Class: "+args[0]+" Not Found");
         }
     }
 
