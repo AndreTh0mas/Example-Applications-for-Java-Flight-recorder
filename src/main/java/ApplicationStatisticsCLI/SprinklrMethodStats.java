@@ -11,10 +11,10 @@ import java.util.Map;
 
 import static ApplicationStatisticsCLI.Formatters.*;
 public class SprinklrMethodStats {
-    private final HashMap<String,HashMap<String,Float>> MethodWiseSprinklrCOM = new HashMap<>();
-    private final HashMap<String,Float> TotalSprinklrCOM= new HashMap<>();
+    private final HashMap<String,HashMap<String,Float>> MethodWiseSprinklrCOM = new HashMap<>(); // Represents for each HotMethod which sprinklr method is responsible
+    private final HashMap<String,Float> TotalSprinklrCOM= new HashMap<>(); // Overall Sprinklr methods % from all the samples.
     private static long TotalExecutionEvent = 0;
-    HashMap<String,Float> MethodSet;
+    HashMap<String,Float> MethodSet; // Top5 Hot Methods from Application Statistics.
     public SprinklrMethodStats( HashMap<String,Float> MethodSet){
         this.MethodSet = MethodSet;
     }
@@ -72,7 +72,7 @@ public class SprinklrMethodStats {
                 }
                 writeParam(MethodTemplate,variable,value);
             }
-            System.out.println(MethodTemplate.toString());
+            System.out.println(MethodTemplate);
         }
         List<Map.Entry<String, Float>> sortedEntriesTopSprinklr = TotalSprinklrCOM.entrySet()
                 .stream()
@@ -95,20 +95,20 @@ public class SprinklrMethodStats {
             }
             writeParam(TopSprinklrTemplate,variable,value);
         }
-        System.out.println(TopSprinklrTemplate.toString());
+        System.out.println(TopSprinklrTemplate);
     }
     public void Main(Path file){
         try (RecordingFile recordingFile = new RecordingFile(file)){ // Re-Reading the file
             while (recordingFile.hasMoreEvents()){
                 RecordedEvent e = recordingFile.readEvent();
                 String EventName = e.getEventType().getName();
-                String CurrentFrame;
                 if(EventName.equals("jdk.ExecutionSample")) {
                     try {
                         List<RecordedFrame> frames = e.getStackTrace().getFrames(); // getting all the frames from the Execution event.
                         if (!frames.isEmpty()) {
                             RecordedFrame topFrame = frames.get(0);
                             if(topFrame.isJavaFrame()) {
+                                String CurrentFrame;
                                 TotalExecutionEvent++;
                                 String topMethod = formatMethod(topFrame.getMethod());
                                 for (RecordedFrame frame : frames) {
@@ -124,7 +124,7 @@ public class SprinklrMethodStats {
                                                 MethodWiseSprinklrCOM.get(topMethod).put(CurrentFrame,(float)1);
                                             }
                                         }
-                                        break;
+                                        break; // As we have found the top most sprinklr Method on the stack
                                     }
                                 }
                             }

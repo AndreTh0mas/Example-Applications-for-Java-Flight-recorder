@@ -114,7 +114,6 @@ public class Formatters {
         if (index == -1) {
             return;
         }
-        lastIndex = index + 1;
         if (value == null || value.length() == 0 ) {
             value = "N/A";
         }

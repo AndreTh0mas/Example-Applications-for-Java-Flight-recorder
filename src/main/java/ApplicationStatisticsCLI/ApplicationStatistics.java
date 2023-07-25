@@ -26,16 +26,14 @@ public class ApplicationStatistics {
     private double TOT_ALLOC = 0;
     private long FirstAllocationTime = -1;
     private double ALLOC_RATE;
+    double TotalCountForHotMethods = 0;
+    double TotalCountForAllocations = 0;
 
     private final HashMap<String,Float> TopThreadCPULoad = new HashMap<>();
     private final Comparator<Pair<String, Float>> customComparator = Comparator.comparing(Pair::getValue);
     private final PriorityQueue<Pair<String, Float>> TopCPULoadUniqueThreads = new PriorityQueue<>(customComparator);
     private final HashMap<String,Float> HotMethods = new HashMap<>();
     private final HashMap<String,Float> HotMethodsAllocation = new HashMap<>();
-
-    double TotalCountForHotMethods = 0;
-    double TotalCountForAllocations = 0;
-
     private final HashMap<String,Float> ThreadSampleCount = new HashMap<>();
     private final HashMap<String,HashMap<String,Float>> ThreadHotMethod = new HashMap<>();
     private static final HashMap<String,Float> Top5HotMethods = new HashMap<>();
@@ -173,14 +171,6 @@ public class ApplicationStatistics {
                     .stream()
                     .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
                     .toList();
-            List<Map.Entry<String, Float>> sortedEntriesMethods = HotMethods.entrySet()
-                    .stream()
-                    .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
-                    .toList();
-            List<Map.Entry<String, Float>> sortedEntriesThreadCPULoad = TopThreadCPULoad.entrySet()
-                    .stream()
-                    .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
-                    .toList();
             for(int i = 0;i<5;i++){
                 variable = "$ALLOCATION_TOP_FRAME";
                 value = "N/A";
@@ -198,6 +188,11 @@ public class ApplicationStatistics {
                 writeParam(template,variable,value);
             }
             // Inserting the HotMethods
+            List<Map.Entry<String, Float>> sortedEntriesMethods = HotMethods.entrySet()
+                    .stream()
+                    .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
+                    .toList();
+
             for(int i = 0;i<5;i++){
                 variable = "$EXECUTION_TOP_FRAME";
                 value = "N/A";
@@ -216,6 +211,12 @@ public class ApplicationStatistics {
                 writeParam(template,variable,value);
             }
             // Inserting the Top Threads
+
+            List<Map.Entry<String, Float>> sortedEntriesThreadCPULoad = TopThreadCPULoad.entrySet()
+                    .stream()
+                    .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
+                    .toList();
+
             for(int i = 0;i<5;i++){
                 variable = "$HIGH_CPU_THREAD";
                 value = "N/A";
@@ -233,11 +234,10 @@ public class ApplicationStatistics {
                 writeParam(template,variable,value);
             }
 
-
-            System.out.println(template.toString());
+            System.out.println(template);
 
             // Inserting HotMethods of the High CPU Threads
-            int PrintCount = 0;
+            int PrintCount = 0; // For top 5 Threads only we are plan to print HotMethods for.
             for(Map.Entry<String,Float> entry: sortedEntriesThreadCPULoad){
                 if(ThreadSampleCount.containsKey(entry.getKey())){ //  entry.getKey -> gets the ThreadName
                     StringBuilder ThreadTemplate = new StringBuilder(ThreadCPULoadTEMPLATE);
@@ -268,7 +268,7 @@ public class ApplicationStatistics {
                         writeParam(ThreadTemplate,variable,value);
                     }
                     PrintCount++;
-                    System.out.println(ThreadTemplate.toString());
+                    System.out.println(ThreadTemplate);
                     if(PrintCount == 5){
                         break;
                     }
@@ -413,15 +413,10 @@ public class ApplicationStatistics {
                     }
                 }
                 printReport();
+                System.out.println("|================ Sprinklr Methods Contributing to Hot Methods ==============|\n");
+                SprinklrMethodStats SprinklrPrint = new SprinklrMethodStats(Top5HotMethods);
+                SprinklrPrint.Main(file);
             }
-        }
-        public static void main(String[] args) throws Exception {
-            ApplicationStatistics TimePass = new ApplicationStatistics();
-            Path file = Path.of("/Users/harsh.kumar/Downloads/flight_recording-2.jfr");
-            TimePass.Runner(file);
-            System.out.println("|================ Sprinklr Methods Contribution to Hot Methods ==============|\n");
-            SprinklrMethodStats SprinklrPrint = new SprinklrMethodStats(Top5HotMethods);
-            SprinklrPrint.Main(file);
         }
     }
 

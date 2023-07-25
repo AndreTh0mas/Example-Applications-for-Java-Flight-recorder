@@ -45,15 +45,14 @@ public class Main {
             printHelp();
             System.exit(0);
         }
+        ApplicationStatistics ApplicationReport= new ApplicationStatistics();
         // Checking if the argument is a file
         if(args[0].length()>4){
-            String lastFourCharacters = args[0].substring(args[0].length() - 4);
-            if(lastFourCharacters.equals(".jfr")){
+            if(args[0].endsWith(".jfr")){
                 try{
                     Path file = Path.of(args[0]);
                     // Run the runner
-
-
+                    ApplicationReport.Runner(file);
                     System.exit(0);
 
                 } catch (Exception ex){
@@ -76,7 +75,6 @@ public class Main {
                 System.out.println("Specify the Duration of Recording: ,Press enter for default = 100s");
 
                 System.out.println("Specify the Path of Recording: ,Press enter for default = This directory");
-
 
             } else {
                 System.out.println("Java Process with PID: " + PID + " not found.");
