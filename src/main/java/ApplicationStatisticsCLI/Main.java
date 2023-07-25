@@ -6,8 +6,6 @@ import com.sun.tools.attach.VirtualMachineDescriptor;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.lang.management.ManagementFactory;
-import java.lang.management.RuntimeMXBean;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -18,11 +16,11 @@ import java.util.Scanner;
 public class Main {
     private static void printHelp(){
         System.out.println("---------------------------USAGE--------------------------------");
-        System.out.println("java ApplicationStatistics.java [options] <main-class|pid|file>\n");
+        System.out.println("java ApplicationStatistics.java [options] <|pid|file>\n");
         System.out.println("--------------------------EXAMPLES------------------------------");
-        System.out.println("java HealthReport.java MyApplication");
         System.out.println("java HealthReport.java 4711");
-        System.out.println("java HealthReport.java PATH/recording.jfr\n");
+        System.out.println("java HealthReport.java PATH/recording.jfr");
+        System.out.println("Example Path: /Users/harsh.kumar/Downloads/flight_recording-2.jfr\n");
         List<VirtualMachineDescriptor> vmDescriptors = VirtualMachine.list();
         System.out.println("--------------------Running Java Processes-----------------------");
         System.out.println("PID\t    DisplayName");
@@ -98,7 +96,7 @@ public class Main {
         }
         // Starting the recording.
         Process p = Runtime.getRuntime().exec( //Executes the specified string command in a separate process
-                "jcmd " + PID + " JFR.start "+ "duration="+DurationInJFR+" filename="+currentPath+" name=myrecording settings=profile stackdepth=64");
+                "jcmd " + PID + " JFR.start "+ "duration="+DurationInJFR+" filename="+currentPath+" name=myrecording settings=profile");
         // p -> Process object to manage the subprocess just created.
         printStdOutput(p); // To output the standard output and Error of the process here.
         // Wait for jcmd to start the recording
@@ -109,7 +107,7 @@ public class Main {
         return Paths.get(currentPath);
     }
 
-    public static void main(String[] args) throws Exception{
+    public static void main(String[] args){
         if(args.length == 0 || args[0].equals("-help")){
             printHelp();
             System.exit(0);
@@ -156,42 +154,6 @@ public class Main {
             } else {
                 System.out.println("Java Process with PID: " + PID + " not found.");
             }
-        }
-        else{
-            // Looking for the Main class.
-            RuntimeMXBean runtimeMxBean = ManagementFactory.getRuntimeMXBean();
-            // Get the process ID of the current Java process
-            long currentPid = ProcessHandle.current().pid();
-            // Iterating through the list of running Java processes
-            for (String processInfo : runtimeMxBean.getInputArguments()) {
-                if (processInfo.contains(args[0])) {
-                    // Extract the PID from the processInfo (it is usually the first part before the '@' symbol)
-                    int atIndex = processInfo.indexOf('@');
-                    if (atIndex > 0) {
-                        long pid = Long.parseLong(processInfo.substring(0, atIndex));
-                        // Check if the found PID is different from the current PID to avoid self-matching
-                        if (pid != currentPid) {
-                            System.out.println("Found Java process with Main class '" + args[0] + "'. PID: " + pid);
-                            try{
-                                Path JfrFilepath = RecordingStartUsingPID(pid);
-                                if(Files.exists(JfrFilepath)){
-                                    ApplicationReport.Runner(JfrFilepath);
-                                }
-                                else{
-                                    System.out.println("Jfr recording was unsuccessful please try again with proper arguments");
-                                }
-                                return;
-                            }
-                            catch (Exception ex){
-                                System.out.println("Something went wrong, Please try again");
-                                ex.printStackTrace();
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-            System.out.println("Main Class: "+args[0]+" Not Found");
         }
     }
 

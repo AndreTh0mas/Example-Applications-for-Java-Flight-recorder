@@ -3,11 +3,13 @@ package ApplicationStatisticsCLI;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedFrame;
 import jdk.jfr.consumer.RecordingFile;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static ApplicationStatisticsCLI.Formatters.*;
 public class SprinklrMethodStats {
@@ -18,66 +20,72 @@ public class SprinklrMethodStats {
     public SprinklrMethodStats( HashMap<String,Float> MethodSet){
         this.MethodSet = MethodSet;
     }
-    private static final String SprinklrMethodTemplate = """
-            | $METHOD_NAME                                                      $FX_PE   |
-            |        --------------------------------------------------------            |
-            | $HOT_METHOD_COM_SPRINKLR                                          $JX_PE   |
-            | $HOT_METHOD_COM_SPRINKLR                                          $JX_PE   |
-            | $HOT_METHOD_COM_SPRINKLR                                          $JX_PE   |
-            | $HOT_METHOD_COM_SPRINKLR                                          $JX_PE   |
-            | $HOT_METHOD_COM_SPRINKLR                                          $JX_PE   |
-            ==============================================================================
-            """;
-    private static final String SprinklrTopMethodTemplate = """
-            |--------------------------Top Sprinklr Methods------------------------------|
-            | $HOT_TOP_COM_SPRINKLR                                             $KX_PE   |
-            | $HOT_TOP_COM_SPRINKLR                                             $KX_PE   |
-            | $HOT_TOP_COM_SPRINKLR                                             $KX_PE   |
-            | $HOT_TOP_COM_SPRINKLR                                             $KX_PE   |
-            | $HOT_TOP_COM_SPRINKLR                                             $KX_PE   |
-            ==============================================================================
-            """;
+    private static final String SprinklrMethodTemplate =
+            "            | $METHOD_NAME                                                      $FX_PE   |\n" +
+            "            |        --------------------------------------------------------            |\n" +
+            "            | $HOT_METHOD_COM_SPRINKLR                                          $JX_PE   |\n" +
+            "            | $HOT_METHOD_COM_SPRINKLR                                          $JX_PE   |\n" +
+            "            | $HOT_METHOD_COM_SPRINKLR                                          $JX_PE   |\n" +
+            "            | $HOT_METHOD_COM_SPRINKLR                                          $JX_PE   |\n" +
+            "            | $HOT_METHOD_COM_SPRINKLR                                          $JX_PE   |\n" +
+            "            ==============================================================================";
+    private static final String SprinklrTopMethodTemplate =
+            "            |--------------------------Top Sprinklr Methods------------------------------|\n" +
+            "            | $HOT_TOP_COM_SPRINKLR                                             $KX_PE   |\n" +
+            "            | $HOT_TOP_COM_SPRINKLR                                             $KX_PE   |\n" +
+            "            | $HOT_TOP_COM_SPRINKLR                                             $KX_PE   |\n" +
+            "            | $HOT_TOP_COM_SPRINKLR                                             $KX_PE   |\n" +
+            "            | $HOT_TOP_COM_SPRINKLR                                             $KX_PE   |\n" +
+            "            ==============================================================================";
     public void printSprinklrStats(){
         List<Map.Entry<String, Float>> sortedEntriesHotMethods = MethodSet.entrySet()
                 .stream()
                 .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
-                .toList();
+                .collect(Collectors.toList());
         String variable = "N/A";
         String value = "N/A";
-        for(Map.Entry<String,Float> entry: sortedEntriesHotMethods){
-            StringBuilder MethodTemplate = new StringBuilder(SprinklrMethodTemplate);
-            List<Map.Entry<String, Float>> sortedOnSprinklrMethod = MethodWiseSprinklrCOM.get(entry.getKey()).entrySet()
-                    .stream()
-                    .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
-                    .toList();
-            variable = "$METHOD_NAME";
-            value = entry.getKey();
-            writeParam(MethodTemplate,variable,value);
-            variable = "$FX_PE";
-            value = formatPercentage(entry.getValue()/TotalExecutionEvent);
-            writeParam(MethodTemplate,variable,value);
-            for(int i = 0;i<5;i++){
-                variable = "$HOT_METHOD_COM_SPRINKLR";
-                value = "N/A";
-                if(i<sortedOnSprinklrMethod.size()) {
-                    Map.Entry<String, Float> Entry = sortedOnSprinklrMethod.get(i);
-                    value = Entry.getKey();
-                }
+        boolean Printed = false;
+        if(sortedEntriesHotMethods.size()>0){
+            for( Map.Entry<String,Float> entry: sortedEntriesHotMethods){
+                if(!MethodWiseSprinklrCOM.containsKey(entry.getKey())) continue;
+                List<Map.Entry<String, Float>> sortedOnSprinklrMethod = MethodWiseSprinklrCOM.get(entry.getKey()).entrySet()
+                        .stream()
+                        .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
+                        .collect(Collectors.toList());
+                StringBuilder MethodTemplate = new StringBuilder(SprinklrMethodTemplate);
+                variable = "$METHOD_NAME";
+                value = entry.getKey();
                 writeParam(MethodTemplate,variable,value);
-                variable = "$JX_PE";
-                value = "N/A";
-                if(i<sortedOnSprinklrMethod.size()) {
-                    Map.Entry<String, Float> Entry = sortedOnSprinklrMethod.get(i);
-                    value = formatPercentage(Entry.getValue()/entry.getValue());
-                }
+                variable = "$FX_PE";
+                value = formatPercentage(entry.getValue()/TotalExecutionEvent);
                 writeParam(MethodTemplate,variable,value);
+                for(int i = 0;i<5;i++){
+                    variable = "$HOT_METHOD_COM_SPRINKLR";
+                    value = "N/A";
+                    if(i<sortedOnSprinklrMethod.size()) {
+                        Map.Entry<String, Float> Entry = sortedOnSprinklrMethod.get(i);
+                        value = Entry.getKey();
+                    }
+                    writeParam(MethodTemplate,variable,value);
+                    variable = "$JX_PE";
+                    value = "N/A";
+                    if(i<sortedOnSprinklrMethod.size()) {
+                        Map.Entry<String, Float> Entry = sortedOnSprinklrMethod.get(i);
+                        value = formatPercentage(Entry.getValue()/entry.getValue());
+                    }
+                    writeParam(MethodTemplate,variable,value);
+                }
+                if(!Printed){
+                    Printed = true;
+                    System.out.println("            |================ Sprinklr Methods Contributing to Hot Methods ==============|\n");
+                }
+                System.out.println(MethodTemplate);
             }
-            System.out.println(MethodTemplate);
         }
         List<Map.Entry<String, Float>> sortedEntriesTopSprinklr = TotalSprinklrCOM.entrySet()
                 .stream()
                 .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
-                .toList();
+                .collect(Collectors.toList());
         StringBuilder TopSprinklrTemplate = new StringBuilder(SprinklrTopMethodTemplate);
         for(int i = 0;i<5;i++){
             variable = "$HOT_TOP_COM_SPRINKLR";
@@ -124,7 +132,7 @@ public class SprinklrMethodStats {
                                                 MethodWiseSprinklrCOM.get(topMethod).put(CurrentFrame,(float)1);
                                             }
                                         }
-                                        break; // As we have found the top most sprinklr Method on the stack
+                                        break; // As we have found the top most Sprinklr Method on the stack
                                     }
                                 }
                             }

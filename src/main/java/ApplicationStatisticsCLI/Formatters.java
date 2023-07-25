@@ -33,22 +33,49 @@ public class Formatters {
                 arrayBrackets += "[]";
                 index++;
             }
-            String type = switch (descriptor.charAt(index)) {
-                case 'L' -> {
+
+            String type = "<unknown-descriptor-type>";
+
+            switch (descriptor.charAt(index)) {
+                case 'L': {
                     int endIndex = descriptor.indexOf(';', index);
                     String s = descriptor.substring(index + 1, endIndex);
                     index = endIndex;
-                    yield s;
+                    type = s;
+                    break;
                 }
-                case 'I' -> "int";
-                case 'J' -> "long";
-                case 'Z' -> "boolean";
-                case 'D' -> "double";
-                case 'F' -> "float";
-                case 'S' -> "short";
-                case 'C' -> "char";
-                case 'B' -> "byte";
-                default -> "<unknown-descriptor-type>";
+                case 'I': {
+                    type = "int";
+                    break;
+                }
+                case 'J': {
+                    type = "long";
+                    break;
+                }
+                case 'Z' : {
+                    type = "boolean";
+                    break;
+                }
+                case 'D' : {
+                    type = "double";
+                    break;
+                }
+                case 'F' : {
+                    type = "float";
+                    break;
+                }
+                case 'S' : {
+                    type = "short";
+                    break;
+                }
+                case 'C' : {
+                    type = "char";
+                    break;
+                }
+                case 'B' : {
+                    type = "byte";
+                    break;
+                }
             };
             descriptors.add(type + arrayBrackets);
         }

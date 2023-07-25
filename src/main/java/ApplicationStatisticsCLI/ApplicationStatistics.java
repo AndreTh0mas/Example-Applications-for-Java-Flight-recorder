@@ -1,8 +1,14 @@
 package ApplicationStatisticsCLI;
-import jdk.jfr.consumer.*;
+
+import jdk.jfr.consumer.RecordedEvent;
+import jdk.jfr.consumer.RecordedFrame;
+import jdk.jfr.consumer.RecordingFile;
 import org.apache.commons.lang3.tuple.Pair;
+
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
+
 import static ApplicationStatisticsCLI.Formatters.*;
 import static java.lang.Math.max;
 
@@ -39,46 +45,43 @@ public class ApplicationStatistics {
     private static final HashMap<String,Float> Top5HotMethods = new HashMap<>();
 
     private static final String TEMPLATE =
-            """
-            ============================ APPLICATION STATS ===============================
-            | Phys. memory: $PHYSIC_MEM                         Alloc Rate: $ALLOC_RATE  |
-            | OC Count    : $OC_COUNT Initial Heap: $INIT_HEAP  Total Alloc: $TOT_ALLOC  |
-            | OC Pause Avg: $OC_AVG   Used Heap   : $USED_HEAP  Thread Count: $THREADS   |
-            | OC Pause Max: $OC_MAX   Commit. Heap: $COM_HEAP   Class Count : $CLASSES   |
-            | YC Count    : $YC_COUNT CPU Machine : $MACH_CPU   Max Comp. Time: $MAX_COM |
-            | YC Pause Max: $YC_MAX   CPU JVM     :$JVM_CPU                              |
-            |------------------------ Top Allocation Methods ----------------------------|
-            | $ALLOCATION_TOP_FRAME                                             $AL_PE   |
-            | $ALLOCATION_TOP_FRAME                                             $AL_PE   |
-            | $ALLOCATION_TOP_FRAME                                             $AL_PE   |
-            | $ALLOCATION_TOP_FRAME                                             $AL_PE   |
-            | $ALLOCATION_TOP_FRAME                                             $AL_PE   |
-            |----------------------------- Hot Methods ----------------------------------|
-            | $EXECUTION_TOP_FRAME                                              $EX_PE   |
-            | $EXECUTION_TOP_FRAME                                              $EX_PE   |
-            | $EXECUTION_TOP_FRAME                                              $EX_PE   |
-            | $EXECUTION_TOP_FRAME                                              $EX_PE   |
-            | $EXECUTION_TOP_FRAME                                              $EX_PE   |
-            |-------------------------- Top CPULoad Threads -----------------------------|
-            | $HIGH_CPU_THREAD                                                  $TX_PE   |
-            | $HIGH_CPU_THREAD                                                  $TX_PE   |
-            | $HIGH_CPU_THREAD                                                  $TX_PE   |
-            | $HIGH_CPU_THREAD                                                  $TX_PE   |
-            | $HIGH_CPU_THREAD                                                  $TX_PE   |
-            |                                                                            |
-            |------ Hot Methods on High CPULoad Threads Having StackTrace Available------|
-            """;
+            "            ============================ APPLICATION STATS ===============================\n" +
+            "            | Phys. memory: $PHYSIC_MEM                         Alloc Rate: $ALLOC_RATE  |\n" +
+            "            | OC Count    : $OC_COUNT Initial Heap: $INIT_HEAP  Total Alloc: $TOT_ALLOC  |\n" +
+            "            | OC Pause Avg: $OC_AVG   Used Heap   : $USED_HEAP  Thread Count: $THREADS   |\n" +
+            "            | OC Pause Max: $OC_MAX   Commit. Heap: $COM_HEAP   Class Count : $CLASSES   |\n" +
+            "            | YC Count    : $YC_COUNT CPU Machine : $MACH_CPU   Max Comp. Time: $MAX_COM |\n" +
+            "            | YC Pause Max: $YC_MAX   CPU JVM     :$JVM_CPU                              |\n" +
+            "            |------------------------ Top Allocation Methods ----------------------------|\n" +
+            "            | $ALLOCATION_TOP_FRAME                                             $AL_PE   |\n" +
+            "            | $ALLOCATION_TOP_FRAME                                             $AL_PE   |\n" +
+            "            | $ALLOCATION_TOP_FRAME                                             $AL_PE   |\n" +
+            "            | $ALLOCATION_TOP_FRAME                                             $AL_PE   |\n" +
+            "            | $ALLOCATION_TOP_FRAME                                             $AL_PE   |\n" +
+            "            |----------------------------- Hot Methods ----------------------------------|\n" +
+            "            | $EXECUTION_TOP_FRAME                                              $EX_PE   |\n" +
+            "            | $EXECUTION_TOP_FRAME                                              $EX_PE   |\n" +
+            "            | $EXECUTION_TOP_FRAME                                              $EX_PE   |\n" +
+            "            | $EXECUTION_TOP_FRAME                                              $EX_PE   |\n" +
+            "            | $EXECUTION_TOP_FRAME                                              $EX_PE   |\n" +
+            "            |-------------------------- Top CPULoad Threads -----------------------------|\n" +
+            "            | $HIGH_CPU_THREAD                                                  $TX_PE   |\n" +
+            "            | $HIGH_CPU_THREAD                                                  $TX_PE   |\n" +
+            "            | $HIGH_CPU_THREAD                                                  $TX_PE   |\n" +
+            "            | $HIGH_CPU_THREAD                                                  $TX_PE   |\n" +
+            "            | $HIGH_CPU_THREAD                                                  $TX_PE   |\n" +
+            "            |                                                                            |\n" +
+            "            |------ Hot Methods on High CPULoad Threads Having StackTrace Available------|";
 
-    private static final String ThreadCPULoadTEMPLATE = """
-            | $THREAD_NAME                                                      $HX_PE   |
-            |        --------------------------------------------------------            |
-            | $HOT_METHOD_CPU_THREAD                                            $BX_PE   |
-            | $HOT_METHOD_CPU_THREAD                                            $BX_PE   |
-            | $HOT_METHOD_CPU_THREAD                                            $BX_PE   |
-            | $HOT_METHOD_CPU_THREAD                                            $BX_PE   |
-            | $HOT_METHOD_CPU_THREAD                                            $BX_PE   |
-            ==============================================================================
-            """;
+    private static final String ThreadCPULoadTEMPLATE =
+            "            | $THREAD_NAME                                                      $HX_PE   |\n" +
+            "            |        --------------------------------------------------------            |\n" +
+            "            | $HOT_METHOD_CPU_THREAD                                            $BX_PE   |\n" +
+            "            | $HOT_METHOD_CPU_THREAD                                            $BX_PE   |\n" +
+            "            | $HOT_METHOD_CPU_THREAD                                            $BX_PE   |\n" +
+            "            | $HOT_METHOD_CPU_THREAD                                            $BX_PE   |\n" +
+            "            | $HOT_METHOD_CPU_THREAD                                            $BX_PE   |\n" +
+            "            ==============================================================================";
 
     private void onCPULoad(RecordedEvent event) {
         MACH_CPU = max(MACH_CPU,(float)event.getValue("machineTotal"));
@@ -170,7 +173,7 @@ public class ApplicationStatistics {
             List<Map.Entry<String, Float>> sortedEntriesAllocation = HotMethodsAllocation.entrySet()
                     .stream()
                     .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
-                    .toList();
+                    .collect(Collectors.toList());
             for(int i = 0;i<5;i++){
                 variable = "$ALLOCATION_TOP_FRAME";
                 value = "N/A";
@@ -191,7 +194,7 @@ public class ApplicationStatistics {
             List<Map.Entry<String, Float>> sortedEntriesMethods = HotMethods.entrySet()
                     .stream()
                     .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
-                    .toList();
+                    .collect(Collectors.toList());
 
             for(int i = 0;i<5;i++){
                 variable = "$EXECUTION_TOP_FRAME";
@@ -215,7 +218,7 @@ public class ApplicationStatistics {
             List<Map.Entry<String, Float>> sortedEntriesThreadCPULoad = TopThreadCPULoad.entrySet()
                     .stream()
                     .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
-                    .toList();
+                    .collect(Collectors.toList());
 
             for(int i = 0;i<5;i++){
                 variable = "$HIGH_CPU_THREAD";
@@ -240,6 +243,11 @@ public class ApplicationStatistics {
             int PrintCount = 0; // For top 5 Threads only we are plan to print HotMethods for.
             for(Map.Entry<String,Float> entry: sortedEntriesThreadCPULoad){
                 if(ThreadSampleCount.containsKey(entry.getKey())){ //  entry.getKey -> gets the ThreadName
+                    if(!ThreadHotMethod.containsKey(entry.getKey())) continue;
+                    List<Map.Entry<String, Float>> ThreadHotMethodEntry = ThreadHotMethod.get(entry.getKey()).entrySet()
+                            .stream()
+                            .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
+                            .collect(Collectors.toList());
                     StringBuilder ThreadTemplate = new StringBuilder(ThreadCPULoadTEMPLATE);
                     variable = "$THREAD_NAME";
                     value = entry.getKey();
@@ -247,10 +255,6 @@ public class ApplicationStatistics {
                     variable = "$HX_PE";
                     value = formatPercentage(entry.getValue());
                     writeParam(ThreadTemplate,variable,value);
-                    List<Map.Entry<String, Float>> ThreadHotMethodEntry = ThreadHotMethod.get(entry.getKey()).entrySet()
-                            .stream()
-                            .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
-                            .toList();
                     for(int i = 0;i<5;i++){
                         variable = "$HOT_METHOD_CPU_THREAD";
                         value = "N/A";
@@ -413,7 +417,6 @@ public class ApplicationStatistics {
                     }
                 }
                 printReport();
-                System.out.println("|================ Sprinklr Methods Contributing to Hot Methods ==============|\n");
                 SprinklrMethodStats SprinklrPrint = new SprinklrMethodStats(Top5HotMethods);
                 SprinklrPrint.Main(file);
             }
