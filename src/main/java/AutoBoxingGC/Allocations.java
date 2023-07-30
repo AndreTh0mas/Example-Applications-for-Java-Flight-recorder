@@ -2,12 +2,8 @@
 package AutoBoxingGC;
 import java.io.IOException;
 
-/**
- * Example causing a lot of memory pressure.
- */
 public class Allocations {
-	private static final int NUMBER_OF_THREADS = 2;
-
+	private static final int NUMBER_OF_THREADS = 5;
 	public static void main(String[] args) throws IOException {
 		ThreadGroup threadGroup = new ThreadGroup("Workers");
 		Thread[] threads = new Thread[NUMBER_OF_THREADS];

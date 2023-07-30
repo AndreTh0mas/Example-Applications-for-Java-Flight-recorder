@@ -5,13 +5,12 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Will allocate a map with ExampleMapContent, and then proceeds to check for each ExampleMapContent
- * in the map.
- */
+/*
+	In this we are checking for values of the Map if they are present or not. It is like a unit test.
+*/
 public final class Allocator implements Runnable {
 	private final static int SET_SIZE = 10_000;
-	private final Map<Integer, ExampleMapContent> map;
+	private final Map<Integer, MapObject> map;
 
 	public Allocator() {
 		map = createMap(SET_SIZE);
@@ -21,19 +20,22 @@ public final class Allocator implements Runnable {
 	public void run() {
 		long yieldCounter = 0;
 		while (true) {
-			Collection<ExampleMapContent> myAllocSet = map.values();
-			for (ExampleMapContent c : myAllocSet) {
+			Collection<MapObject> myAllocSet = map.values();
+			for (MapObject c : myAllocSet) {
 				if (!map.containsKey(c.getId()))
-					System.out.println("Now this is strange!");
+					System.out.println("Should not happen!");
 				if (++yieldCounter % 1000 == 0)
-					Thread.yield(); //  relenqueshing the resource of the processor but can be rescheduled.
+					Thread.yield();
 			}
 		}
 	}
-	private static Map<Integer, ExampleMapContent> createMap(int count) {
-		Map<Integer, ExampleMapContent> map = new HashMap<>();
+	private static Map<Integer, MapObject> createMap(int count) {
+		Map<Integer, MapObject> map = new HashMap<>();
+		// Here we are adding a primitive value where Reference object is expected.
+		// To fix this do Integer.value(i) where Reference object is expected such as while putting in a HashMap<Integer,>
 		for (int i = 0; i < count; i++) {
-			map.put(i, new ExampleMapContent(Integer.valueOf(i)));
+			map.put(i, new MapObject(i));
+//			map.put(Integer.valueOf(i),new MapObject(Integer.valueOf(i)); // To Fix
 		}
 		return map;
 	}

@@ -1,15 +1,14 @@
-
 package AutoBoxingGC;
 
 /**
  * The kind of object that will be in the map.
  */
-final class ExampleMapContent {
-	private final Integer id;
+final class MapObject {
+	private final int id; // Do Integer id: To fix the issue
 
-	ExampleMapContent(Integer id) {
+	MapObject(int id) {
 		this.id = id;
-	}
+	} // Here as well
 
 int getId() {
 		return id;
