@@ -1,10 +1,8 @@
 package EventStreamin;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-
 import jdk.jfr.Event;
 import jdk.jfr.EventType;
 import jdk.jfr.Label;
@@ -13,16 +11,19 @@ import jdk.jfr.Recording;
 import jdk.jfr.consumer.EventStream;
 import jdk.jfr.consumer.RecordingFile;
 
-// NO USE JUST USE JAVA MISSION CONTROL TO VISUALIZE THE EVENTS:
 
+/*
+In this example we have created 2 custom events and we are going to make a recording of the program then analyze it by parsing the recording file
+This is useful if tools such as JDK mission control is not available or if one need to get some specific out of event data.
+*/
 public class ParsingRecordingFileSample {
-    @Name("com.sprinklr.Hello") // Name of the event (Important)
+    @Name("com.spr.Hello")
     @Label("Hello World!")
-    static class Hello extends Event { // Custom Events
+    static class Hello extends Event {
         @Label("Greeting")
         String greeting;
     }
-    @Name("com.sprinklr.Message")
+    @Name("com.spr.Message")
     @Label("Message")
     static class Message extends Event {
         @Label("Text")
@@ -30,8 +31,8 @@ public class ParsingRecordingFileSample {
     }
     public static void main(String... args) throws Exception{
 
-        try (Recording r = new Recording()) { // Creates a recording without any settings
-            r.start(); // Starting the recording
+        try (Recording r = new Recording()) {
+            r.start();
             r.enable("jdk.CPULoad").withPeriod(Duration.ofSeconds(1));
             for (int i = 0; i < 3; i++) {
                 Message messageEvent = new Message();
@@ -44,9 +45,8 @@ public class ParsingRecordingFileSample {
                 helloEvent.greeting = "Hello " + i;
                 helloEvent.commit();
             }
-            // Only these 3 events will be recorded.
             Thread.sleep(2000);
-            r.stop(); // Stopping the recording
+            r.stop();
             Path file = Files.createTempFile("recording", ".jfr");
             // Creates an empty file in default temporary file directory and returns the PATH to that file
             r.dump(file); // Dumping the recording to destination
@@ -55,23 +55,22 @@ public class ParsingRecordingFileSample {
                 System.out.println("Reading events one by one");
                 System.out.println("=========================");
                 while (recordingFile.hasMoreEvents()) {
-                    var e = recordingFile.readEvent(); // Reads the next event if exists
+                    var e = recordingFile.readEvent();
                     String eventName = e.getEventType().getName();
                     System.out.println("Name: " + eventName);
                 }
                 System.out.println();
                 System.out.println("List of registered event types");
                 System.out.println("==============================");
-                for (EventType eventType : recordingFile.readEventTypes()) { // Returns the list of all event types.
+                for (EventType eventType : recordingFile.readEventTypes()) {
                     System.out.println(eventType.getName());
                 }
             }
             System.out.println();
-
             System.out.println("Reading all events at once");
             System.out.println("==========================");
 
-            for (var e : RecordingFile.readAllEvents(file)) {// Returns a list of al events that occurred in the recording
+            for (var e : RecordingFile.readAllEvents(file)) {
                 // Not good use for the cases of Large files, only useful for simple cases.
                 String eventName = e.getEventType().getName();
                 System.out.println("Name: " + eventName);
@@ -84,10 +83,10 @@ public class ParsingRecordingFileSample {
             /*
              To process only specific events, we could read events one by one with RecordingFile.readEvent(),
              as above, then check the event's name. However, if we use the event streaming API,
-             then event objects of the same type are reused to reduced allocation pressure.
+             then event objects of the same type are reused to reduce allocation pressure.
              */
             try (EventStream eventStream = EventStream.openFile(file)) {
-                // Creates an event stream from a file.
+                // Creates an event stream from the file.
                 // By default, the stream starts with the first event in the file.
                 eventStream.onEvent("com.sprinklr.Message", e -> {
                     System.out.println(

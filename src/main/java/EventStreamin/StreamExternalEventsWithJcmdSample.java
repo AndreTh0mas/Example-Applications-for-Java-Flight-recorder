@@ -5,26 +5,30 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.util.Properties;
-
 import com.sun.tools.attach.VirtualMachine;
-
 import jdk.jfr.consumer.EventStream;
-/*The sample StreamExternalEventsWithJcmdSample.java is similar to StreamExternalEventsWithAttachAPISample
- except it starts Flight Recorder for SleepOneSecondIntervals with the Attach API. With this API,
- the sample runs the command jcmd <PID> JFR.start with the PID of SleepOneSecondIntervals:*/
 
+
+/*
+ The sample StreamExternalEventsWithJcmdSample.java is similar to StreamExternalEventsWithAttachAPISample
+ except it starts Flight Recorder for BusySleepExample with the Attach API. With this API,
+ the sample runs the command jcmd <PID> JFR.start with the PID of BusySleepExample:
+*/
+
+/*
+ Hot to Use:
+ java BusySleepExample.java -> to start the example.
+ java StreamExternalEventsWithJcmdSample.java <PID>  || of BusySleepExample.
+*/
 public class StreamExternalEventsWithJcmdSample {
     public static void main(String... args) throws Exception {
         if (args[0] == null) {
             System.err.println("Requires PID of process as argument");
             System.exit(1);
         }
-
         String pid = args[0];
         // Every Java application has a single instance of class Runtime that allows the application to interface
         // with the environment in which the application is running. The current runtime can be obtained from the getRuntime method.
-        // An application cannot create its own instance of this class
-        // Use in exec String[] not a single string as it is deprecated for plausible reasons.
         Process p = Runtime.getRuntime().exec( //Executes the specified string command in a separate process
                 "jcmd " + pid + " JFR.start");
         // p -> Process object to manage the subprocess just created.
