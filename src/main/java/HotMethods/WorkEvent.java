@@ -1,5 +1,5 @@
 
-package Hotmethods;
+package HotMethods;
 
 import jdk.jfr.Category;
 import jdk.jfr.Description;

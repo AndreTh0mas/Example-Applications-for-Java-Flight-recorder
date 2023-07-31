@@ -1,5 +1,5 @@
 
-package Hotmethods;
+package HotMethods;
 
 /**
  * The code run in the worker threads. One JFR event will be generated per lap in the loop,

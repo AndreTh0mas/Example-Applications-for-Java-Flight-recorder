@@ -1,11 +1,11 @@
 
-package Hotmethods;
+package HotMethods;
 
 import java.util.Collection;
 import java.util.LinkedList;
 
 public class HolderOfUniqueValues {
-	private Collection<Integer> collection;
+	private final Collection<Integer> collection;
 
 	public HolderOfUniqueValues() {
 		collection = new LinkedList<>();

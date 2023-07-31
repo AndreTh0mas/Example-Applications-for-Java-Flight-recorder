@@ -1,7 +1,5 @@
 
-package Hotmethods;
-
-import jdk.jfr.consumer.EventStream;
+package HotMethods;
 
 import java.io.IOException;
 
