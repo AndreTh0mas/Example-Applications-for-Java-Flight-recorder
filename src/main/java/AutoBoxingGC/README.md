@@ -12,9 +12,9 @@ jcmd
 ```
 After that use:
 ```bash
-jcmm <PID of your process> JFR.start settings=profile duration=100s filename=<PATH>
+jcmd <PID of your process> JFR.start settings=profile duration=100s filename=<PATH>
 ```
-To create your own flight recording. After the duration of the recording, a JFR recording file (.jfr) will be generated. Open this file using Java Mission Control (JMC) analyze the recorded data.
+To create your own flight recording. After the duration of the recording, a JFR recording file (.jfr) will be generated. Open this file using Java Mission Control (JMC) to analyze the recorded data.
 
 ## Overview
 
