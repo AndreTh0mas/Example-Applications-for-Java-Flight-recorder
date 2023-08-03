@@ -19,11 +19,21 @@ This project focuses on Java Flight Recorder (JFR) and its applications in indus
 
 ## Getting Started
 
-1. Clone the project repository:
+Clone the project repository:
 ```bash
 git clone https://github.com/AndreTh0mas/Java-Flight-Recorder-Showcase.git
 cd Java-Flight-Recorder-Showcase
 ```
+To use each project, navigate to its respective directory. For Use case application navigate to ``USE Case Projects directory`` to find all the projects there.
+## Overview
+Each use case application has its own README file with instructions on how to use it. Open any project directory of your choice and follow the instructions provided in the README to test and explore the specific use case application.
+
+In these directories, you will find detailed information on how to build, run, and analyze the Java applications related to GC analysis, HotMethods analysis, Memory Leak detection, Latency application on lock contention, and the Event Streaming API exploration. The README files will guide you through the steps to execute each use case and leverage Java Flight Recorder (JFR) and Java Mission Control (JMC) for performance analysis and optimization.
+
+## Mentions
+Marcus Hirt JMC Tutorial.
+
 ## Requirements
-* Jdk version 11 & above
-* Jdk Misson Control
+Jdk version 11 & above  
+Jdk Misson Control
+
