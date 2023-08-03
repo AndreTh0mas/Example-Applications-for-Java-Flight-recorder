@@ -1,14 +1,12 @@
 package Latency_Locks;
 
-/**
- * This is what will run in the worker threads. It will do some arbitrary work, and then log some
- * message about work being done.
- */
+/*
+  Logging some message about work being done.
+*/
 public class Worker implements Runnable {
 	public final static Logger LOGGER = Logger.getLogger();
 	private final int id;
 	private final int loopCount;
-
 	public Worker(int id, int loopCount) {
 		this.id = id;
 		this.loopCount = loopCount;

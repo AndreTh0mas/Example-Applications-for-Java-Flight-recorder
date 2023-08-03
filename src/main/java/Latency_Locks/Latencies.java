@@ -1,4 +1,3 @@
-
 package Latency_Locks;
 
 import java.io.IOException;
@@ -16,7 +15,7 @@ public class Latencies {
 			System.out.println("Starting " + threads[i].getName() + "...");
 			threads[i].start();
 		}
-		System.out.println("...all prepared!");
+		System.out.println("Application is running: Launch flight recording to analyse on JMC");
 		System.out.println("Press <enter> to quit!");
 		System.out.flush();
 		System.in.read();

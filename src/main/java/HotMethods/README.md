@@ -3,14 +3,14 @@ This Java application demonstrates a real-world use case of detecting HotMethods
 
 ## How to Use
 
-After Building the project. Run the Main file of this package.
+After Building the project. Run the ```HotMethods.java``` of this package.
 Then use the command below to know the PID of the process
 ```bash
 jcmd
 ```
 After that, use:
 ```bash
-jcmm <PID of your process> JFR.start settings=profile duration=100s filename=<PATH>
+jcmd <PID of your process> JFR.start settings=profile duration=100s filename=<PATH>
 ```
 To create your own flight recording. After the duration of the recording -> to allow the application to run for a sufficient duration to capture meaningful profiling data, a JFR recording file (.jfr) will be generated. Open this file using Java Mission Control (JMC) to analyze the recorded data.
 

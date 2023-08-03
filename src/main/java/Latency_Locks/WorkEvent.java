@@ -5,12 +5,8 @@ import jdk.jfr.Description;
 import jdk.jfr.Event;
 import jdk.jfr.Label;
 
-/**
- * Example event showing that not much is needed to time stuff using the JDK Flight Recorder.
- */
+// Showing how many pieces of work was executed.
 @Label("Work")
-@Category("03_JFR_Latencies")
+@Category("JFR_Latencies")
 @Description("A piece of work executed")
-public class WorkEvent extends Event {
-
-}
+public class WorkEvent extends Event { }

@@ -4,7 +4,6 @@ import java.io.IOException;
 
 public class HotMethods {
 
-
 	// May want to set NUMBER_OF_THREADS close to the number of hardware threads for maximum saturation
 	private static final int NUMBER_OF_THREADS = 4;
 
