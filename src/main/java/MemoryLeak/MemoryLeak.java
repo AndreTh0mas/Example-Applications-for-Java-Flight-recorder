@@ -1,12 +1,11 @@
 package MemoryLeak;
 
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.List;
 import java.io.IOException;
 import java.util.ArrayList;
 
-
-public class Leak {
+public class MemoryLeak {
 	private static class DemoObject {
 		private long position;
 		@SuppressWarnings("unused")
@@ -44,12 +43,17 @@ public class Leak {
 			}
 		}
 	}
+	private static void startAllocThread() {
+		Thread thread = new Thread(new TransientAllocator(), "Transient Allocator");
+		thread.setDaemon(true);
+		thread.start();
+	}
 
 	private static class DemoThread implements Runnable {
-		private Hashtable<DemoObject, String> table;
+		private HashMap<DemoObject, String> Map;
 		private int leakspeed;
-		DemoThread(Hashtable<DemoObject, String> table, int leakspeed) {
-			this.table = table;
+		DemoThread(HashMap<DemoObject, String> Map, int leakspeed) {
+			this.Map = Map;
 			this.leakspeed = leakspeed;
 		}
 		public void run() {
@@ -58,7 +62,7 @@ public class Leak {
 				for (int i = 0; i <= 100; i++)
 					put(total + i);
 
-				for (int i = 0; i <= 100 - leakspeed; i++) // leaving some of the objects as it is, in the Hashtable.(MemoryLeak)
+				for (int i = 0; i <= 100 - leakspeed; i++) // leaving some of the objects as it is, in the HashMap.(MemoryLeak)
 					remove(total + i);
 
 				for (int i = 0; i < 10; i++) {
@@ -71,37 +75,23 @@ public class Leak {
 				}
 			}
 		}
-
 		private void put(int n) {
-			table.put(new DemoObject(n), "foo");
+			Map.put(new DemoObject(n), "foo");
 		}
-
 		private String remove(int n) {
-			return table.remove(new DemoObject(n));
+			return Map.remove(new DemoObject(n));
 		}
 	}
-
+	private static final int NUMBER_OF_THREADS = 4;
 	public static void main(String[] args) throws IOException {
-		Hashtable<DemoObject, String> h = new Hashtable<DemoObject, String>();
+		HashMap<DemoObject, String> LeakStore = new HashMap<>();
 		Thread[] threads;
-		int leakspeed = 1;
-		int threadCount;
-
-		if (args.length < 1 || args.length > 2) {
-			threadCount = 2;
-		} else {
-			threadCount = Integer.parseInt(args[0]);
-		}
-		threads = new Thread[threadCount];
-
-		if (args.length == 2) {
-			leakspeed = Integer.parseInt(args[1]);
-		}
-
-		System.out.println(String.format("Starting leak with %d threads and a leak speed of %d", threadCount, leakspeed));
+		int leakspeed = 2; // Represents number of objects we are leaving in the HashMap
+		threads = new Thread[NUMBER_OF_THREADS];
+		System.out.println(String.format("Starting leak with %d threads and a leak speed of %d", NUMBER_OF_THREADS, leakspeed));
 		System.out.print("Starting threads... ");
 		for (int i = 0; i < threads.length; i++) {
-			threads[i] = new Thread(new DemoThread(h, leakspeed));
+			threads[i] = new Thread(new DemoThread(LeakStore, leakspeed));
 			threads[i].setDaemon(true);
 			threads[i].start();
 		}
@@ -109,11 +99,5 @@ public class Leak {
 		startAllocThread();
 		System.out.println("Press <enter> to quit!");
 		System.in.read();
-	}
-
-	private static void startAllocThread() {
-		Thread thread = new Thread(new TransientAllocator(), "Transient Allocator");
-		thread.setDaemon(true);
-		thread.start();
 	}
 }
