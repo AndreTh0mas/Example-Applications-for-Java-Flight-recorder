@@ -20,7 +20,9 @@ then
         echo "Specified Path does not exist. Example path -> /Users/harsh.kumar/Desktop"
         exit 1
     fi
-    SpecifiedPath="$path/Flight_recording.jfr" #Path input can also be taken for users use case
+    current_timestamp=$(date "+%Y-%m-%d-%H:%M:%S")
+    filename="JFR_${PID}_${current_timestamp}.jfr"
+    SpecifiedPath="$path/$filename" #Path input can also be taken for users use case
     echo "File Path is: $SpecifiedPath"
     CPULoad=$(ps -p $PID -o %cpu=)
     CPULoad=$(printf "%.0f" "$CPULoad")
@@ -45,7 +47,7 @@ then
         if [ $RealCPU -gt 80 ]
         then
             sleep 10
-            echo "Recording file name = recording3"
+            echo "Recording file name = $filename"
             jcmd $PID JFR.dump name=1 filename=$SpecifiedPath
             echo "JFR DUMP SUCCESFULLY ON CPU LOAD > 80%"
             echo "Now we want this bash application to sit idle for more than 10 minutes as else we would just keep on dumping"
@@ -55,3 +57,4 @@ then
 else
     echo "Specidfied process $PID is not a java process"
 fi
+
