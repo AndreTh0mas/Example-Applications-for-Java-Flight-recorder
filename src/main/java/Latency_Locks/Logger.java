@@ -1,6 +1,5 @@
 package Latency_Locks;
 
-
 public class Logger {
 	private static Logger myInstance = new Logger();
 

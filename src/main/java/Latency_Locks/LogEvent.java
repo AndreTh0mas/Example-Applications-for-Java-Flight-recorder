@@ -1,4 +1,3 @@
-
 package Latency_Locks;
 
 import jdk.jfr.Category;
