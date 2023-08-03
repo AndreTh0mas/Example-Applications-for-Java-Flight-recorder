@@ -1,6 +1,8 @@
 #!/bin/bash
 
-echo "Enter the <PID> of the JAVA process"
+echo "--------- Running JAVA Processes ---------"
+jps
+echo "Enter the <PID> of the JAVA process for recording"
 read PID
 NumberOfCores=$(getconf _NPROCESSORS_ONLN) # To get the number of Cores in the CPU
 NameProcess=$(ps -p $PID -o comm=)
@@ -19,7 +21,7 @@ then
         exit 1
     fi
     SpecifiedPath="$path/Flight_recording.jfr" #Path input can also be taken for users use case
-    echo "Path is: $SpecifiedPath"
+    echo "File Path is: $SpecifiedPath"
     CPULoad=$(ps -p $PID -o %cpu=)
     CPULoad=$(printf "%.0f" "$CPULoad")
     RealCPU=$(expr $CPULoad / $NumberOfCores)
@@ -51,5 +53,5 @@ then
         fi
     done
 else
-    echo "Specified process $PID is not a java process"
+    echo "Specidfied process $PID is not a java process"
 fi
