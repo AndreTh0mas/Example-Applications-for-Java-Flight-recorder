@@ -3,6 +3,8 @@ This Java application showcases three essential operations: Regex, Prime, and JS
 
 ## How to Use
 
+``ADD the large-file.json path to`` ``LargeString.java``
+
 After Building the project. Run: ```Main.java```
 Then use the command below to know the PID of the process
 ```bash

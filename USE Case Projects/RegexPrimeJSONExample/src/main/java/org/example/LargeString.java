@@ -24,7 +24,7 @@ public class LargeString {
         try{
             FileReadEvent event  = new FileReadEvent();
             event.begin();
-            ExampleString = new String(Files.readAllBytes(Paths.get("./large-file.json")));
+            ExampleString = new String(Files.readAllBytes(Paths.get("PATH TO THIS FILE/large-file.json")));
             if(ExampleString.length()>0){
                 event.Indicator = true;
                 event.end();
